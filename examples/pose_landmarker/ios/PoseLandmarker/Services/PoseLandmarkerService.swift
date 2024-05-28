@@ -165,7 +165,10 @@ class PoseLandmarkerService: NSObject {
       let startDate = Date()
       let result = try poseLandmarker?.detect(image: mpImage)
       let inferenceTime = Date().timeIntervalSince(startDate) * 1000
-      return ResultBundle(inferenceTime: inferenceTime, poseLandmarkerResults: [result])
+      return ResultBundle(inferenceTime: inferenceTime, 
+                          poseLandmarkerResults: [result],
+                          timestamp: Date()
+      )
     } catch {
         print(error)
         return nil
@@ -206,7 +209,9 @@ class PoseLandmarkerService: NSObject {
     return ResultBundle(
       inferenceTime: Date().timeIntervalSince(startDate) / Double(frameCount) * 1000,
       poseLandmarkerResults: poseLandmarkerResultTuple.poseLandmarkerResults,
-      size: poseLandmarkerResultTuple.videoSize)
+      size: poseLandmarkerResultTuple.videoSize,
+      timestamp: Date()
+    )
   }
 
   private func imageGenerator(with videoAsset: AVAsset) -> AVAssetImageGenerator {
@@ -262,7 +267,9 @@ extension PoseLandmarkerService: PoseLandmarkerLiveStreamDelegate {
     func poseLandmarker(_ poseLandmarker: PoseLandmarker, didFinishDetection result: PoseLandmarkerResult?, timestampInMilliseconds: Int, error: (any Error)?) {
         let resultBundle = ResultBundle(
           inferenceTime: Date().timeIntervalSince1970 * 1000 - Double(timestampInMilliseconds),
-          poseLandmarkerResults: [result])
+          poseLandmarkerResults: [result],
+          timestamp: Date()
+        )
         liveStreamDelegate?.poseLandmarkerService(
           self,
           didFinishDetection: resultBundle,
@@ -275,4 +282,15 @@ struct ResultBundle {
   let inferenceTime: Double
   let poseLandmarkerResults: [PoseLandmarkerResult?]
   var size: CGSize = .zero
+  let timestamp: Date
+  var debugData:DebugData {
+    get{
+      return  DebugData(inference: inferenceTime, timestamp: timestamp)
+    }
+  }
+}
+
+struct DebugData : Codable{
+  let inference: Double
+  let timestamp: Date
 }

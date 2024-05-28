@@ -59,6 +59,9 @@ class RootViewController: UIViewController {
     return isOpen ? Constants.inferenceBottomHeight - self.view.safeAreaInsets.bottom
       : Constants.expandButtonHeight + Constants.expandButtonTopSpace
   }
+  
+  static public var debugDataList: [DebugData] = []
+  static public var debugEnabled = false
 
   // MARK: View Handling Methods
   override func viewDidLoad() {
@@ -144,6 +147,48 @@ class RootViewController: UIViewController {
     mediaLibraryViewController.layoutUIElements(
       withInferenceViewHeight: self.totalBottomSheetHeight)
   }
+  @IBAction func onChangeDebugging(_ sender: UIButton) {
+    RootViewController.debugEnabled = !RootViewController.debugEnabled
+    if(RootViewController.debugEnabled){
+      sender.setTitle("Stop", for: .normal)
+    }else{
+      sender.setTitle("Start", for: .normal)
+    }
+  }
+  
+  @IBAction func onShareData(_ sender: UIButton) {
+    guard let fileUrl = convertToJson(data: RootViewController.debugDataList) else { return }
+    let activityViewController = UIActivityViewController(activityItems: [fileUrl], applicationActivities: nil)
+    if let popoverController = activityViewController.popoverPresentationController {
+      popoverController.sourceView = sender
+      popoverController.sourceRect = sender.bounds
+    }
+    present(activityViewController, animated: true, completion: nil)
+  }
+  
+  func convertToJson(data: [DebugData]) -> URL? {
+    let encoder = JSONEncoder()
+    encoder.dateEncodingStrategy = .millisecondsSince1970
+    do {
+      let jsonData = try encoder.encode(data)
+      var file = "debug_data";
+      file += "_" + InferenceConfigurationManager.sharedInstance.model.name
+      file += "_" + InferenceConfigurationManager.sharedInstance.delegate.name
+      file += "_" + UIDevice.current.model
+      file += ".json"
+      let filename = FileManager.default.temporaryDirectory.appendingPathComponent(file)
+      try jsonData.write(to: filename)
+      return filename
+    } catch {
+      print("Error while creating json: \(error)")
+      return nil
+    }
+  }
+  
+  public static func stopDebugging(){
+    RootViewController.debugEnabled = false;
+    RootViewController.debugDataList.removeAll();
+  }
 }
 
 // MARK: UITabBarDelegate
@@ -213,11 +258,15 @@ extension RootViewController: UITabBarDelegate {
 extension RootViewController: InferenceResultDeliveryDelegate {
   func didPerformInference(result: ResultBundle?) {
     var inferenceTimeString = ""
-    
     if let inferenceTime = result?.inferenceTime {
       inferenceTimeString = String(format: "%.2fms", inferenceTime)
     }
     inferenceViewController?.update(inferenceTimeString: inferenceTimeString)
+    
+    if(result == nil){return}
+    if(!RootViewController.debugEnabled) {return}
+    RootViewController.debugDataList.append(result!.debugData)
+    
   }
 }
 

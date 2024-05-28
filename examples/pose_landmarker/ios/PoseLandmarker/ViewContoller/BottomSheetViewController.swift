@@ -122,11 +122,13 @@ class BottomSheetViewController: UIViewController {
   private func updateModel(modelTitle: String) {
     guard let model = Model(name: modelTitle) else { return }
     InferenceConfigurationManager.sharedInstance.model = model
+    RootViewController.stopDebugging()
   }
 
   private func updateDelegate(title: String) {
     guard let delegate = PoseLandmarkerDelegate(name: title) else { return }
     InferenceConfigurationManager.sharedInstance.delegate = delegate
+    RootViewController.stopDebugging()
   }
 
   // MARK: IBAction
